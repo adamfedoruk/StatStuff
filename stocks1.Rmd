@@ -1,0 +1,195 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(quantmod)
+library(magrittr)
+library(TTR)
+#library(devtools)
+if (!require("TTR")) {
+  install.packages("TTR")
+  library(TTR)
+}
+#if (!require("quantstrat")) {
+ # install.packages("quantstrat", repos="http://R-Forge.R-project.org")
+ # library(quantstrat)
+#}
+#if (!require("IKTrading")) {
+#  if (!require("devtools")) {
+#    install.packages("devtools")
+#  }
+  #library(devtools)
+  #install_github("IKTrading", username = "IlyaKipnis")
+  #library(IKTrading)
+#}
+library(quantmod)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+```{r}
+start<-as.Date("2018-01-01")
+end<- as.Date("2018-9-14")
+symbl<-"'ATVI'"
+```
+
+
+```{r}
+getSymbols("ATVI", src = "yahoo", from = start, to = end)
+```
+
+```{r}
+plot(ATVI[, "ATVI.Close"], main = "ATVI")
+```
+
+```{r}
+candleChart(ATVI, up.col = "black", dn.col = "red", theme = "white")
+```
+
+
+```{r}
+# Let's get data for Microsoft (MSFT) and Google (GOOG) (actually, Google is
+# held by a holding company called Alphabet, Inc., which is the company
+# traded on the exchange and uses the ticker symbol GOOG).
+getSymbols(c("MSFT", "GOOG"), src = "yahoo", from = start, to = end)
+
+```
+
+```{r}
+# Create an xts object (xts is loaded with quantmod) that contains closing
+# prices for ATVI, MSFT, and GOOG
+stocks <- as.xts(data.frame(ATVI = ATVI[, "ATVI.Close"], MSFT = MSFT[, "MSFT.Close"], 
+    GOOG = GOOG[, "GOOG.Close"]))
+head(stocks)
+```
+
+
+```{r}
+# Create a plot showing all series as lines; must use as.zoo to use the zoo
+# method for plot, which allows for multiple series to be plotted on same
+# plot
+plot(as.zoo(stocks), screens = 1, lty = 1:3, xlab = "Date", ylab = "Price")
+legend("right", c("ATVI", "MSFT", "GOOG"), lty = 1:3, cex = 0.5)
+```
+
+
+```{r}
+plot(as.zoo(stocks[, c("ATVI.Close", "MSFT.Close")]), screens = 1, lty = 1:2, 
+    xlab = "Date", ylab = "Price")
+par(new = TRUE)
+plot(as.zoo(stocks[, "GOOG.Close"]), screens = 1, lty = 3, xaxt = "n", yaxt = "n", 
+    xlab = "", ylab = "")
+axis(4)
+mtext("Price", side = 4, line = 3)
+legend("topleft", c("ATVI (left)", "MSFT (left)", "GOOG"), lty = 1:3, cex = 0.5)
+```
+
+
+```{r}
+stock_return = apply(stocks, 1, function(x) {x / stocks[1,]}) %>%
+  t %>% as.xts
+head(stock_return)
+```
+
+```{r}
+plot(as.zoo(stock_return), screens = 1, lty = 1:3, xlab = "Date", ylab = "Return")
+legend("topleft", c("ATVI", "MSFT", "GOOG"), lty = 1:3, cex = 0.5)
+```
+
+```{r}
+stock_change = stocks %>% log %>% diff
+head(stock_change)
+```
+
+```{r}
+plot(as.zoo(stock_change), screens = 1, lty = 1:3, xlab = "Date", ylab = "Log Difference")
+legend("topleft", c("ATVI", "MSFT", "GOOG"), lty = 1:3, cex = 0.5)
+```
+
+
+```{r}
+candleChart(ATVI, up.col = "green", dn.col = "red", theme = "white")
+addSMA(n = 20)
+```
+
+
+```{r}
+start <- as.Date("2010-01-01")
+getSymbols(c("ATVI", "MSFT", "GOOG"), src = "yahoo", from = start, to = end)
+## [1] "ATVI" "MSFT" "GOOG"
+# The subset argument allows specifying the date range to view in the chart.
+# This uses xts style subsetting. Here, I'm using the idiom
+# 'YYYY-MM-DD/YYYY-MM-DD', where the date on the left-hand side of the / is
+# the start date, and the date on the right-hand side is the end date. If
+# either is left blank, either the earliest date or latest date in the
+# series is used (as appropriate). This method can be used for any xts
+# object, say, ATVI
+candleChart(ATVI, up.col = "green", dn.col = "red", theme = "white", subset = "2016-01-04/")
+addSMA(n = 20)
+```
+
+
+```{r}
+candleChart(ATVI, up.col = "green", dn.col = "red", theme = "white", subset = "2018-01-01/")
+addSMA(n = c(20, 50, 200))
+```
+
+
+```{r}
+chartSeries(ATVI,up.col = "#82D173", dn.col = "#ED254E", subset = "2018-01-04/")
+
+ATVI_sma_20 <- SMA(
+  Cl(ATVI),  # The closing price of ATVI, obtained by quantmod's Cl() function
+  n = 20     # The number of days in the moving average window
+  )
+
+ATVI_sma_50 <- SMA(
+  Cl(ATVI),
+  n = 50
+  )
+
+ATVI_sma_200 <- SMA(
+  Cl(ATVI),
+  n = 200
+  )
+
+#zoomChart("2018")  # Zoom into the year 2016 in the chart
+addTA(ATVI_sma_20, on = 1, col = "#D36135")  # on = 1 plots the SMA with price
+addTA(ATVI_sma_50, on = 1, col = "#465362")
+addTA(ATVI_sma_200, on = 1, col = "#F9DC5C")
+```
+
+
+```{r}
+getSymbols("ATVI") #Goldman OHLC from yahoo 
+
+chartSeries(ATVI) 
+```
+
+```{r}
+# slightly different syntax - after the fact. 
+# also changing the x-axis labeling 
+candleChart(ATVI,theme='white', type='candles') 
+reChart(major.ticks='months') 
+zoomChart("last 2 months")
+
+```
+
+
+```{r}
+chartSeries(ATVI,subset = "2018-01-04/") #draw the chart 
+#addVo() #add volume 
+addBBands() #add Bollinger Bands 
+#addCCI() #add Commodity Channel Index
+```
+
